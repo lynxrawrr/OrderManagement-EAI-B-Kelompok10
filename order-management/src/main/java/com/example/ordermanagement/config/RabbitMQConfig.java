@@ -13,6 +13,7 @@ public class RabbitMQConfig {
 
     // Nama antrean dan kunci pengiriman pesan
     public static final String QUEUE = "order_stock_queue";
+    public static final String CANCEL_QUEUE = "order_cancel_queue";
     public static final String EXCHANGE = "order_exchange";
     public static final String ROUTING_KEY = "order_routing_key";
     public static final String CANCEL_ROUTING_KEY = "order_cancel_key";
@@ -22,6 +23,12 @@ public class RabbitMQConfig {
     @Bean
     public Queue queue() {
         return new Queue(QUEUE);
+    }
+
+    // Antrean untuk membatalkan pesanan (release stok)
+    @Bean
+    public Queue cancelQueue() {
+        return new Queue(CANCEL_QUEUE);
     }
 
     // Antrean untuk sinkronisasi data produk baru ke service inventory
@@ -42,6 +49,12 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(queue).to(exchange).with(ROUTING_KEY);
     }
 
+    // Menghubungkan antrean cancel dengan exchange menggunakan routing key khusus pembatalan
+    @Bean
+    public Binding cancelBinding(Queue cancelQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(cancelQueue).to(exchange).with(CANCEL_ROUTING_KEY);
+    }
+
     // Menghubungkan antrean produk dengan exchange menggunakan routing key khusus sinkronisasi
     @Bean
     public Binding productSyncBinding(Queue productSyncQueue, TopicExchange exchange) {
@@ -59,10 +72,5 @@ public class RabbitMQConfig {
         final RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(converter());
         return rabbitTemplate;
-    }
-
-    @Bean
-    public Binding cancelBinding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with(CANCEL_ROUTING_KEY);
     }
 }

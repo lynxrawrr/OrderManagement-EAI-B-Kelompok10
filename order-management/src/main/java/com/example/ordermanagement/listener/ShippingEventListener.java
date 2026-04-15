@@ -18,7 +18,7 @@ public class ShippingEventListener {
     @RabbitListener(bindings = @QueueBinding(
         value = @Queue(value = "order_status_queue", durable = "true"),
         exchange = @Exchange(value = "order_exchange", type = "topic"),
-        key = "order_status_update_key"
+        key = "order_shipped_key"
     ))
     public void consumeStatusUpdate(OrderEvent event) {
         System.out.println("Menerima update status dari Shipping untuk Order ID: " + event.getOrderId());

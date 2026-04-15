@@ -31,4 +31,20 @@ public class OrderEventListener {
             System.err.println("Gagal membuat pengiriman: " + e.getMessage());
         }
     }
+
+    // Mendengarkan event cancel order untuk membatalkan pengiriman
+    @RabbitListener(bindings = @QueueBinding(
+        value = @Queue(value = "order_shipping_cancel_queue", durable = "true"),
+        exchange = @Exchange(value = "order_exchange", type = "topic"),
+        key = "order_cancel_key"
+    ))
+    public void consumeCancelEvent(OrderEvent event) {
+        System.out.println("Menerima pembatalan pesanan untuk Order ID: " + event.getOrderId());
+        try {
+            shipmentService.cancelShipment(event.getOrderId());
+            System.out.println("Berhasil memproses pembatalan pengiriman.");
+        } catch (Exception e) {
+            System.err.println("Gagal membatalkan pengiriman: " + e.getMessage());
+        }
+    }
 }

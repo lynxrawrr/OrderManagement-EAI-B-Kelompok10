@@ -32,7 +32,11 @@ public class OrderEventListener {
     }
 
     // Mendengarkan event order baru untuk mengunci (reserve) stok
-    @RabbitListener(queuesToDeclare = @Queue("order_stock_queue"))
+    @RabbitListener(bindings = @QueueBinding(
+        value = @Queue(value = "order_stock_queue", durable = "true"),
+        exchange = @Exchange(value = "order_exchange", type = "topic"),
+        key = "order_routing_key"
+    ))
     public void consumeOrderEvent(OrderEvent event) {
         System.out.println("Menerima pesan dari RabbitMQ! Memproses reserve stok...");
         try {
@@ -46,10 +50,19 @@ public class OrderEventListener {
     }
 
     // Mendengarkan event cancel order untuk melepas kembali stok ke status tersedia
-    @RabbitListener(queuesToDeclare = @Queue("order_cancel_queue"))
+    @RabbitListener(bindings = @QueueBinding(
+        value = @Queue(value = "order_cancel_queue", durable = "true"),
+        exchange = @Exchange(value = "order_exchange", type = "topic"),
+        key = "order_cancel_key"
+    ))
     public void consumeCancelEvent(OrderEvent event) {
-        System.out.println("Menerima pesan CANCEL! Melepas (release) stok...");
-        inventoryService.releaseStock(event.getProductId(), event.getQuantity());
+        System.out.println("Menerima pesan CANCEL untuk Produk ID: " + event.getProductId() + " Qty: " + event.getQuantity());
+        try {
+            inventoryService.releaseStock(event.getProductId(), event.getQuantity());
+            System.out.println("Berhasil release stok untuk Produk ID: " + event.getProductId());
+        } catch (Exception e) {
+            System.err.println("Gagal release stok untuk Produk ID " + event.getProductId() + ": " + e.getMessage());
+        }
     }
 
     // Mendengarkan event shipped (barang dikirim) untuk menghapus stok dari daftar cadangan

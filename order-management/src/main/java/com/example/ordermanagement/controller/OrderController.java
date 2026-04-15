@@ -48,10 +48,8 @@ public class OrderController {
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Order> cancelOrder(@PathVariable Long id) {
-        boolean cancelled = orderService.cancelOrder(id);
-        if (!cancelled) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok().build(); // Atau bisa return order yang sudah di-cancel
+        Optional<Order> cancelledOrder = orderService.cancelOrder(id);
+        return cancelledOrder.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

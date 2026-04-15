@@ -54,6 +54,19 @@ public class ShipmentService {
     }
 
     public List<Shipment> getAllShipments() {
-    return shipmentRepository.findAll();
-}
+        return shipmentRepository.findAll();
+    }
+
+    // Metode untuk membatalkan pengiriman (jika pesanan dibatalkan)
+    public void cancelShipment(Long orderId) {
+        List<Shipment> shipments = shipmentRepository.findByOrderId(orderId);
+        for (Shipment shipment : shipments) {
+            // Hanya batalkan jika status masih PENDING atau belum dikirim
+            if ("PENDING".equalsIgnoreCase(shipment.getStatus())) {
+                shipment.setStatus("CANCELLED");
+                shipmentRepository.save(shipment);
+                System.out.println("Shipment ID " + shipment.getId() + " untuk Order ID " + orderId + " telah dibatalkan.");
+            }
+        }
+    }
 }

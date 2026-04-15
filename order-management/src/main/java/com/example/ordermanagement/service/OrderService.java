@@ -86,10 +86,14 @@ public class OrderService {
         return orderRepository.findById(orderId)
                 .map(order -> {
                     order.setStatus(status);
-                    System.out.println("Status Order ID " + orderId + " berhasil diupdate menjadi: " + status);
-                    return orderRepository.save(order);
+                    Order updated = orderRepository.save(order);
+                    System.out.println("Status Order ID " + orderId + " BERHASIL diupdate menjadi: " + status);
+                    return updated;
                 })
-                .orElse(null);
+                .orElseGet(() -> {
+                    System.err.println("Gagal update status: Order ID " + orderId + " tidak ditemukan!");
+                    return null;
+                });
     }
 
     public Optional<Order> getOrderById(Long id) {
@@ -100,12 +104,14 @@ public class OrderService {
         return orderRepository.findByCustomerId(customerId);
     }
 
-    public boolean cancelOrder(Long id) {
+    @Transactional
+    public Optional<Order> cancelOrder(Long id) {
         return orderRepository.findById(id).map(order -> {
-            // Update status menjadi CANCELLED alih-alih menghapus data
+            // 1. Update status menjadi CANCELLED
             order.setStatus("CANCELLED");
-            orderRepository.save(order);
+            Order updatedOrder = orderRepository.save(order);
 
+            // 2. Kirim pesan ke RabbitMQ untuk setiap item agar stok dilepaskan kembali
             for (OrderItem item : order.getItems()) {
                 OrderEvent event = new OrderEvent(
                         order.getId(),
@@ -117,11 +123,11 @@ public class OrderService {
                         RabbitMQConfig.CANCEL_ROUTING_KEY,
                         event);
 
-                System.out.println("Pesan Cancel dikirim untuk Produk: " + item.getProduct().getName());
+                System.out.println("Pesan Cancel dikirim untuk Produk: " + item.getProduct().getName() + " (ID: " + item.getProduct().getId() + ") Qty: " + item.getQuantity());
             }
 
-            return true;
-        }).orElse(false);
+            return updatedOrder;
+        });
     }
 
     public static class ItemRequest {
