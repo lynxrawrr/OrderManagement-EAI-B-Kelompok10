@@ -96,16 +96,16 @@ public class OrderService {
         return orderRepository.findById(id);
     }
 
-    // public boolean deleteOrder(Long id) {
-    // if (orderRepository.existsById(id)) {
-    // orderRepository.deleteById(id);
-    // return true;
-    // }
-    // return false;
-    // }
+    public List<Order> getOrdersByCustomer(Long customerId) {
+        return orderRepository.findByCustomerId(customerId);
+    }
 
-    public boolean deleteOrder(Long id) {
+    public boolean cancelOrder(Long id) {
         return orderRepository.findById(id).map(order -> {
+            // Update status menjadi CANCELLED alih-alih menghapus data
+            order.setStatus("CANCELLED");
+            orderRepository.save(order);
+
             for (OrderItem item : order.getItems()) {
                 OrderEvent event = new OrderEvent(
                         order.getId(),
@@ -120,7 +120,6 @@ public class OrderService {
                 System.out.println("Pesan Cancel dikirim untuk Produk: " + item.getProduct().getName());
             }
 
-            orderRepository.deleteById(id);
             return true;
         }).orElse(false);
     }

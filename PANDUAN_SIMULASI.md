@@ -96,7 +96,12 @@ Gunakan Port 8081 untuk mencoba fitur manual menggunakan **JSON Body**:
   - **Inventory**: `availableStock` berkurang 5, `reservedStock` bertambah 5.
   - **Shipping**: Otomatis membuat jadwal pengiriman baru dengan status `PENDING`.
 
-### Langkah 5: Manajemen Pengiriman (Requirement 2 - 8082)
+### Langkah 6: Pembatalan Pesanan (Optional)
+Jika pesanan dibatalkan, stok di inventory harus kembali normal.
+- **POST** `http://localhost:8080/api/orders/1/cancel`
+- **Verifikasi Inventory (8081)**:
+  - **GET** `http://localhost:8081/api/inventory/1`
+  - *Hasil: `availableStock` bertambah, `reservedStock` berkurang.*
 Gunakan Port 8082 untuk mengelola pengiriman:
 - **Lihat Semua Pengiriman**: `GET /api/shipments`
 - **Create Shipment Manual**:
@@ -131,8 +136,10 @@ Gunakan Port 8082 untuk mengelola pengiriman:
 | :--- | :--- | :--- | :--- |
 | **Order (8080)** | List Products | GET | `/api/products` |
 | | List Customers | GET | `/api/customers` |
+| | Sub-resource Category | GET | `/api/categories/{id}/products` |
+| | Sub-resource Customer | GET | `/api/customers/{id}/orders` |
 | | Create Order | POST | `/api/orders?customerId={id}` |
-| | Cancel Order | DELETE | `/api/orders/{id}` |
+| | Cancel Order | POST | `/api/orders/{id}/cancel` |
 | **Inventory (8081)** | Check All Stock | GET | `/api/inventory` |
 | | Check Single | GET | `/api/inventory/{productId}` |
 | | Reserve Manual | POST | `/api/inventory/reserve` |

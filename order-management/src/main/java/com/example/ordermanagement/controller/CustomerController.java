@@ -15,6 +15,8 @@ import java.util.Optional;
 
 // DTO
 import com.example.ordermanagement.dto.CustomerRequest;
+import com.example.ordermanagement.entity.Order;
+import com.example.ordermanagement.service.OrderService;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -22,6 +24,9 @@ public class CustomerController {
 
     @Autowired
     private CustomerRepository customerRepository;
+
+    @Autowired
+    private OrderService orderService;
 
     @GetMapping
     public List<Customer> getAllCustomers() {
@@ -33,6 +38,14 @@ public class CustomerController {
         Optional<Customer> customer = customerRepository.findById(id);
         return customer.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/orders")
+    public ResponseEntity<List<Order>> getOrdersByCustomer(@PathVariable Long id) {
+        if (!customerRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(orderService.getOrdersByCustomer(id));
     }
 
     @PostMapping
