@@ -2,6 +2,7 @@ package com.example.ordermanagement.controller;
 
 import com.example.ordermanagement.entity.Product;
 import com.example.ordermanagement.service.ProductService;
+import com.example.ordermanagement.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Optional;
 
-// Exception
 import jakarta.validation.Valid;
 import com.example.ordermanagement.dto.ProductRequest;
 
@@ -20,6 +20,9 @@ public class ProductController {
 
     @Autowired
     private ProductService productService;
+
+    @Autowired
+    private CategoryService categoryService;
 
     @GetMapping
     public ResponseEntity<List<Product>> getAllProducts() {
@@ -40,6 +43,10 @@ public class ProductController {
         product.setPrice(request.getPrice()); 
         product.setStock(request.getStock()); 
         
+        if (request.getCategoryId() != null) {
+            categoryService.getCategoryById(request.getCategoryId()).ifPresent(product::setCategory);
+        }
+
         Product saved = productService.createProduct(product); 
         return new ResponseEntity<>(saved, HttpStatus.CREATED); 
     }

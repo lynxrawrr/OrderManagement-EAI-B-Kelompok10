@@ -65,7 +65,6 @@ public class CustomerController {
         if (optionalCustomer.isPresent()) {
             Customer customer = optionalCustomer.get();
 
-            // update field
             customer.setName(request.getName());
             customer.setEmail(request.getEmail());
             customer.setAddress(request.getAddress());

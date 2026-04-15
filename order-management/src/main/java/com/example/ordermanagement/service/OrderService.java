@@ -30,47 +30,52 @@ public class OrderService {
     @Autowired
     private ProductRepository productRepository;
 
-    // Tambahkan RabbitTemplate untuk mengirim pesan
     @Autowired
     private RabbitTemplate rabbitTemplate;
 
-    @Transactional
+    @Transactional 
     public Order createOrder(Long customerId, List<ItemRequest> itemRequests) {
+        // 1. Cari customer di database
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer tidak ditemukan"));
 
+        // 2. Inisialisasi objek Order baru
         Order order = new Order();
         order.setCustomer(customer);
         order.setOrderNumber("ORD-" + System.currentTimeMillis());
         order.setStatus("PENDING");
         order.setCreatedAt(LocalDateTime.now());
 
+        // 3. Proses setiap item yang dibeli
         double total = 0.0;
         for (ItemRequest req : itemRequests) {
             Product product = productRepository.findById(req.getProductId())
                     .orElseThrow(() -> new RuntimeException("Product tidak ditemukan"));
-
-            // LOGIKA PEMOTONGAN STOK MANUAL DIHAPUS DARI SINI
-            // Kita biarkan Inventory Service yang mengecek dan menahan stok.
 
             OrderItem item = new OrderItem();
             item.setProduct(product);
             item.setQuantity(req.getQuantity());
             item.setPrice(product.getPrice());
             item.setSubtotal(product.getPrice() * req.getQuantity());
-
+            
             order.addItem(item);
             total += item.getSubtotal();
+        }
+        
+        order.setTotalAmount(total);
+        
+        // 4. Simpan order ke database
+        Order savedOrder = orderRepository.save(order);
 
-            // KIRIM PESAN KE RABBITMQ
-            OrderEvent event = new OrderEvent(req.getProductId(), req.getQuantity());
+        // 5. Kirim pesan ke RabbitMQ agar Inventory mengurangi stok dan Shipping membuat jadwal kirim
+        for (ItemRequest req : itemRequests) {
+            OrderEvent event = new OrderEvent(savedOrder.getId(), req.getProductId(), req.getQuantity());
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE, RabbitMQConfig.ROUTING_KEY, event);
-
-            System.out.println("Pesan Reserve Stok dikirim ke RabbitMQ untuk Produk ID: " + req.getProductId());
+            
+            System.out.println("Pesan Event dikirim ke RabbitMQ untuk Order ID: " + savedOrder.getId());
         }
 
-        order.setTotalAmount(total);
-        return orderRepository.save(order);
+        return savedOrder;
     }
 
     public List<Order> getAllOrders() {
@@ -81,6 +86,7 @@ public class OrderService {
         return orderRepository.findById(orderId)
                 .map(order -> {
                     order.setStatus(status);
+                    System.out.println("Status Order ID " + orderId + " berhasil diupdate menjadi: " + status);
                     return orderRepository.save(order);
                 })
                 .orElse(null);
@@ -100,11 +106,10 @@ public class OrderService {
 
     public boolean deleteOrder(Long id) {
         return orderRepository.findById(id).map(order -> {
-            // Karena Order punya List<OrderItem>, kita loop semua itemnya
             for (OrderItem item : order.getItems()) {
-                // Kirim pesan CANCEL untuk setiap produk di dalam order
                 OrderEvent event = new OrderEvent(
-                        item.getProduct().getId(), // Ambil ID dari relasi Product
+                        order.getId(),
+                        item.getProduct().getId(),
                         item.getQuantity());
 
                 rabbitTemplate.convertAndSend(

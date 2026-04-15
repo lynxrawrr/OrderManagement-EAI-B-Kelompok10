@@ -1,4 +1,4 @@
-package com.example.ordermanagement.dto;
+package com.example.shippingservice.dto;
 
 import java.io.Serializable;
 
