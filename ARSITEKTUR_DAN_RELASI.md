@@ -13,13 +13,13 @@ Sistem ini adalah platform **Order Management** berbasis microservices yang meng
 
 ## 3. Relasi Order - Inventory - Shipping
 
-* [ ] Relasi antar service dipicu oleh **Event** yang dikirim ke RabbitMQ:
+Relasi antar service dipicu oleh **Event** yang dikirim ke RabbitMQ:
 
 1. **Order -> Inventory (Sync Produk)**: Saat produk baru dibuat, Inventory membuat baris stok awal.
 2. **Order -> Inventory (Reserve)**: Saat pesanan dibuat, stok dipindahkan dari `available` ke `reserved` (dikunci).
 3. **Order -> Shipping (Schedule)**: Saat pesanan dibuat, jadwal pengiriman otomatis dibuat dengan status `PENDING`.
-4. **Order -> Inventory (Release)**: Jika pesanan dibatalkan, stok `reserved` dikembalikan ke `available`.
-5. **Shipping -> Inventory (Finalize)**: Saat status pengiriman menjadi `SHIPPED`, stok `reserved` dihapus (barang dianggap keluar dari gudang).
+4. **Order -> Inventory & Shipping (Cancel)**: Jika pesanan dibatalkan, stok `reserved` dikembalikan ke `available` dan status pengiriman diubah menjadi `CANCELLED`.
+5. **Shipping -> Inventory & Order (Ship/Finalize)**: Saat status pengiriman menjadi `SHIPPED`, stok `reserved` dihapus (Finalize) dan status pesanan di Order Service diperbarui menjadi `SHIPPED`.
 
 ## 4. Diagram Relasi
 
@@ -43,10 +43,12 @@ sequenceDiagram
     S->>S: Update Status to SHIPPED
     S->>R: OrderShippedEvent (order_shipped_key)
     R-->>I: Finalize Stock (Reserved -X)
+    R-->>O: Update Order Status to SHIPPED
 
     Note over O, S: Alur Pembatalan (Cancel)
     O->>R: OrderCancelledEvent (order_cancel_key)
     R-->>I: Release Stock (Reserved -X, Available +X)
+    R-->>S: Update Shipment Status to CANCELLED
 ```
 
 ## 5. Hubungan Database

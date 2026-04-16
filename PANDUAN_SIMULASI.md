@@ -1,4 +1,4 @@
-# Panduan Lengkap Simulasi Microservices Order Management
+# tPanduan Lengkap Simulasi Microservices Order Management
 
 Dokumen ini berisi panduan detail untuk mensimulasikan sistem Order Management yang terintegrasi menggunakan RabbitMQ, mencakup operasi manual dan otomatis sesuai requirement tugas EAI.
 
@@ -148,41 +148,41 @@ Jika pesanan dibatalkan, stok di inventory harus kembali normal.
 
 ### Requirement 1: Inventory API
 
-- [x] **Cek Stok**: Tersedia di `GET /api/inventory` (All) dan `GET /api/inventory/{id}` (Single).
-- [x] **Reserve Stok**: Tersedia manual di `POST /api/inventory/reserve` dan otomatis saat Order.
-- [x] **Release Stok**: Tersedia manual di `POST /api/inventory/release` dan otomatis saat Cancel Order.
+- [X] **Cek Stok**: Tersedia di `GET /api/inventory` (All) dan `GET /api/inventory/{id}` (Single).
+- [X] **Reserve Stok**: Tersedia manual di `POST /api/inventory/reserve` dan otomatis saat Order.
+- [X] **Release Stok**: Tersedia manual di `POST /api/inventory/release` dan otomatis saat Cancel Order.
 
 ### Requirement 2: Shipping API
 
-- [x] **Create Shipment**: Otomatis saat Order dan manual di `POST /api/shipments`.
-- [x] **Get Shipment**: Tersedia di `GET /api/shipments` (All) dan `GET /api/shipments/{id}` (Single).
-- [x] **Update Shipment Status**: Tersedia di `PUT /api/shipments/{id}/status`.
+- [X] **Create Shipment**: Otomatis saat Order dan manual di `POST /api/shipments`.
+- [X] **Get Shipment**: Tersedia di `GET /api/shipments` (All) dan `GET /api/shipments/{id}` (Single).
+- [X] **Update Shipment Status**: Tersedia di `PUT /api/shipments/{id}/status`.
 
 ### Detail Entitas & Integrasi
 
-- [x] **Category Description**: Field `description` tersedia dan berfungsi.
-- [x] **Finalize Stock**: Stok cadangan otomatis dihapus saat pengiriman berhasil (`SHIPPED`).
+- [X] **Category Description**: Field `description` tersedia dan berfungsi.
+- [X] **Finalize Stock**: Stok cadangan otomatis dihapus saat pengiriman berhasil (`SHIPPED`).
 
 ---
 
 ## 4. Daftar Endpoint Lengkap
 
-| Service              | Fitur                    | Method | Endpoint                                                  |
-| :------------------- | :----------------------- | :----- | :-------------------------------------------------------- |
-| **Order (8080)**     | List Products            | GET    | `/api/products`                                           |
-|                      | List Customers           | GET    | `/api/customers`                                          |
-|                      | Sub-resource Category    | GET    | `/api/categories/{id}/products`                           |
-|                      | Sub-resource Customer    | GET    | `/api/customers/{id}/orders`                              |
-|                      | Create Order             | POST   | `/api/orders?customerId={id}`                             |
-|                      | Cancel Order             | POST   | `/api/orders/{id}/cancel`                                 |
+| Service                    | Fitur                    | Method | Endpoint                                                    |
+| :------------------------- | :----------------------- | :----- | :---------------------------------------------------------- |
+| **Order (8080)**     | List Products            | GET    |                                                             |
+|                            | List Customers           | GET    | `/api/customers`                                          |
+|                            | Sub-resource Category    | GET    | `/api/categories/{id}/products`                           |
+|                            | Sub-resource Customer    | GET    | `/api/customers/{id}/orders`                              |
+|                            | Create Order             | POST   | `/api/orders?customerId={id}`                             |
+|                            | Cancel Order             | POST   | `/api/orders/{id}/cancel`                                 |
 | **Inventory (8081)** | Check All Stock          | GET    | `/api/inventory`                                          |
-|                      | Check Single             | GET    | `/api/inventory/{productId}`                              |
-|                      | Reserve Manual           | POST   | `/api/inventory/reserve`                                  |
-|                      | Release Manual           | POST   | `/api/inventory/release`                                  |
+|                            | Check Single             | GET    | `/api/inventory/{productId}`                              |
+|                            | Reserve Manual           | POST   | `/api/inventory/reserve`                                  |
+|                            | Release Manual           | POST   | `/api/inventory/release`                                  |
 | **Shipping (8082)**  | List Shipments           | GET    | `/api/shipments`                                          |
-|                      | Check Single             | GET    | `/api/shipments/{id}`                                     |
-|                      | Create Shipment (Manual) | POST   | `/api/shipments?orderId={id}&productId={id}&quantity={n}` |
-|                      | Update Status            | PUT    | `/api/shipments/{id}/status`                              |
+|                            | Check Single             | GET    | `/api/shipments/{id}`                                     |
+|                            | Create Shipment (Manual) | POST   | `/api/shipments?orderId={id}&productId={id}&quantity={n}` |
+|                            | Update Status            | PUT    | `/api/shipments/{id}/status`                              |
 
 ---
 

@@ -48,9 +48,22 @@ public class InventoryService {
     @Transactional
     public void finalizeStock(Long productId, Integer quantity) {
         Inventory inv = getStock(productId);
-        inv.setReservedStock(inv.getReservedStock() - quantity); // Kurangi stok cadangan saja
+        int currentReserved = inv.getReservedStock();
+
+        if (currentReserved >= quantity) {
+            // Alur Normal: Kurangi dari stok cadangan (hasil dari reserveStock sebelumnya)
+            inv.setReservedStock(currentReserved - quantity);
+            System.out.println("Stok FINALIZED (Normal)! Mengurangi Reserved Stock untuk Produk ID: " + productId);
+        } else {
+            // Alur Manual/Revisi: Cadangan tidak cukup (misal 0 karena lompat flow), kurangi sisa dari stok tersedia
+            int shortage = quantity - currentReserved;
+            inv.setReservedStock(0);
+            inv.setAvailableStock(inv.getAvailableStock() - shortage);
+            System.out.println("Peringatan: Stok cadangan tidak cukup. Mengurangi " + shortage + " dari Available Stock untuk Produk ID: " + productId);
+        }
+
         inventoryRepository.save(inv);
-        System.out.println("Stok FINALIZED! Reserved stock dikurangi untuk Produk ID: " + productId);
+        System.out.println("Stok FINALIZED untuk Produk ID: " + productId);
     }
 
     // Metode untuk mengembalikan stok cadangan ke tersedia jika pesanan dibatalkan (Cancel)

@@ -12,7 +12,7 @@ Sistem ini terdiri dari tiga layanan mandiri dengan database terpisah:
 2.  **Inventory Service (Port 8081)**: Mengelola ketersediaan stok fisik, reservasi stok, dan sinkronisasi produk baru.
 3.  **Shipping Service (Port 8082)**: Mengelola jadwal pengiriman dan pelacakan status pesanan.
 
-Semua layanan berkomunikasi secara asinkron menggunakan **RabbitMQ** sebagai Message Broker.
+Semua layanan berkomunikasi secara asinkron menggunakan **RabbitMQ** sebagai Message Broker dengan **Topic Exchange**.
 
 ---
 
@@ -21,8 +21,8 @@ Semua layanan berkomunikasi secara asinkron menggunakan **RabbitMQ** sebagai Mes
 - **📦 Sinkronisasi Produk Otomatis**: Menambah produk di Order Service otomatis membuat data stok di Inventory Service.
 - **🔐 Reservasi Stok (Two-Phase Stock)**: Memisahkan `available_stock` dan `reserved_stock` untuk mencegah *overselling*.
 - **🚚 Pengiriman Otomatis**: Pembuatan pesanan otomatis memicu pembuatan jadwal pengiriman di Shipping Service.
-- **✅ Finalisasi Stok**: Stok cadangan (`reserved`) otomatis dihapus saat status pengiriman berubah menjadi `SHIPPED`.
-- **🔄 Rollback Stok**: Pembatalan pesanan otomatis mengembalikan stok cadangan ke stok tersedia.
+- **✅ Finalisasi & Sinkronisasi Status**: Update status pengiriman menjadi `SHIPPED` otomatis mengurangi stok cadangan di Inventory dan memperbarui status pesanan di Order Service.
+- **🔄 Rollback Stok & Pembatalan**: Pembatalan pesanan otomatis mengembalikan stok cadangan ke stok tersedia dan membatalkan jadwal pengiriman di Shipping Service.
 - **📡 JSON-Based API**: Seluruh komunikasi manual menggunakan JSON Body (DTO).
 
 ---
@@ -57,9 +57,9 @@ Jalankan perintah berikut di folder masing-masing service:
 | Event | Producer | Consumer | Dampak |
 | :--- | :--- | :--- | :--- |
 | **Product Created** | Order (8080) | Inventory (8081) | Inisialisasi stok awal produk baru. |
-| **Order Placed** | Order (8080) | Inventory (8081) & Shipping (8082) | Reserve stok & Buat jadwal pengiriman. |
-| **Order Cancelled** | Order (8080) | Inventory (8081) | Kembalikan stok dari Reserved ke Available. |
-| **Order Shipped** | Shipping (8082) | Inventory (8081) | Hapus stok cadangan (Barang keluar gudang). |
+| **Order Placed** | Order (8080) | Inventory (8081) & Shipping (8082) | Reserve stok & Buat jadwal pengiriman (`PENDING`). |
+| **Order Cancelled** | Order (8080) | Inventory (8081) & Shipping (8082) | Release stok ke Available & Batalkan pengiriman (`CANCELLED`). |
+| **Order Shipped** | Shipping (8082) | Inventory (8081) & Order (8080) | Finalize stok (hapus reserved) & Update status order ke `SHIPPED`. |
 
 ---
 
@@ -69,6 +69,7 @@ Untuk detail cara mensimulasikan sistem dan memahami relasi arsitektural, silaka
 
 1.  **[PANDUAN_SIMULASI.md](./PANDUAN_SIMULASI.md)**: Langkah-demi-langkah pengujian API (Postman/Curl) dari hulu ke hilir.
 2.  **[ARSITEKTUR_DAN_RELASI.md](./ARSITEKTUR_DAN_RELASI.md)**: Penjelasan alasan desain, diagram Mermaid, dan detail teknis integrasi.
+3.  **[PENJELASAN_FOLDER_SERVICE.md](./PENJELASAN_FOLDER_SERVICE.md)**: Panduan fungsi folder, file kunci, dan daftar **Routing Keys** RabbitMQ.
 
 ---
 
