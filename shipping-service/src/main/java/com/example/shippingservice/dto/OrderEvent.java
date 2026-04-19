@@ -7,7 +7,6 @@ public class OrderEvent implements Serializable {
     private Long productId;
     private Integer quantity;
 
-    // Default Constructor
     public OrderEvent() {
     }
 
@@ -17,7 +16,6 @@ public class OrderEvent implements Serializable {
         this.quantity = quantity;
     }
 
-    // Getters and Setters
     public Long getOrderId() {
         return orderId;
     }

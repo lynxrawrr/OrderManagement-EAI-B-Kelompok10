@@ -17,14 +17,14 @@ public class ShipmentService {
     @Autowired
     private ShipmentRepository shipmentRepository;
 
-    // Metode untuk membuat jadwal pengiriman baru (Status awal: PENDING)
+    // Metode untuk membuat jadwal pengiriman baru 
     public Shipment createShipment(Long orderId, Long productId, Integer quantity) {
         Shipment shipment = new Shipment();
         shipment.setOrderId(orderId);
         shipment.setProductId(productId);
         shipment.setQuantity(quantity);
         shipment.setStatus("PENDING");
-        shipment.setTrackingNumber("TRK-" + System.currentTimeMillis()); // Nomor resi otomatis
+        shipment.setTrackingNumber("TRK-" + System.currentTimeMillis()); 
         return shipmentRepository.save(shipment);
     }
 

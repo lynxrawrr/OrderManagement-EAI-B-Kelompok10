@@ -1,4 +1,4 @@
-# tPanduan Lengkap Simulasi Microservices Order Management
+# Panduan Lengkap Simulasi Microservices Order Management
 
 Dokumen ini berisi panduan detail untuk mensimulasikan sistem Order Management yang terintegrasi menggunakan RabbitMQ, mencakup operasi manual dan otomatis sesuai requirement tugas EAI.
 
@@ -126,7 +126,7 @@ Gunakan Port 8081 untuk mencoba fitur manual menggunakan **JSON Body**:
   - **Inventory**: `availableStock` berkurang 5, `reservedStock` bertambah 5.
   - **Shipping**: Otomatis membuat jadwal pengiriman baru dengan status `PENDING`.
 
-### Langkah 6: Pembatalan Pesanan (Optional)
+### Langkah 5: Pembatalan Pesanan (Optional)
 
 Jika pesanan dibatalkan, stok di inventory harus kembali normal.
 
@@ -142,34 +142,13 @@ Jika pesanan dibatalkan, stok di inventory harus kembali normal.
 - **Update Status ke SHIPPED**: `PUT /api/shipments/1/status?status=SHIPPED`
 - **Verifikasi Finalize Stok**: Setelah status jadi `SHIPPED`, cek Inventory `GET /api/inventory/1`. `reservedStock` akan otomatis kembali ke **0** karena barang sudah benar-benar terkirim.
 
----
+--- 
 
-## 3. Analisis Requirement Tugas
-
-### Requirement 1: Inventory API
-
-- [X] **Cek Stok**: Tersedia di `GET /api/inventory` (All) dan `GET /api/inventory/{id}` (Single).
-- [X] **Reserve Stok**: Tersedia manual di `POST /api/inventory/reserve` dan otomatis saat Order.
-- [X] **Release Stok**: Tersedia manual di `POST /api/inventory/release` dan otomatis saat Cancel Order.
-
-### Requirement 2: Shipping API
-
-- [X] **Create Shipment**: Otomatis saat Order dan manual di `POST /api/shipments`.
-- [X] **Get Shipment**: Tersedia di `GET /api/shipments` (All) dan `GET /api/shipments/{id}` (Single).
-- [X] **Update Shipment Status**: Tersedia di `PUT /api/shipments/{id}/status`.
-
-### Detail Entitas & Integrasi
-
-- [X] **Category Description**: Field `description` tersedia dan berfungsi.
-- [X] **Finalize Stock**: Stok cadangan otomatis dihapus saat pengiriman berhasil (`SHIPPED`).
-
----
-
-## 4. Daftar Endpoint Lengkap
+## 5. Daftar Endpoint Lengkap
 
 | Service                    | Fitur                    | Method | Endpoint                                                    |
 | :------------------------- | :----------------------- | :----- | :---------------------------------------------------------- |
-| **Order (8080)**     | List Products            | GET    |                                                             |
+| **Order (8080)**     | List Products            | GET    | `/api/products`                                           |
 |                            | List Customers           | GET    | `/api/customers`                                          |
 |                            | Sub-resource Category    | GET    | `/api/categories/{id}/products`                           |
 |                            | Sub-resource Customer    | GET    | `/api/customers/{id}/orders`                              |
@@ -186,7 +165,7 @@ Jika pesanan dibatalkan, stok di inventory harus kembali normal.
 
 ---
 
-## 5. Prosedur Reset Database (Mulai Dari Nol)
+## 6. Prosedur Reset Database (Mulai Dari Nol)
 
 Jika Anda ingin mengulang simulasi dari awal dengan database kosong, jalankan perintah SQL berikut di MySQL Anda:
 
@@ -214,4 +193,3 @@ TRUNCATE TABLE shipments;
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-_(Catatan: Pastikan urutan TRUNCATE pada `order_management_db` sesuai agar tidak terjadi error relasi)._
