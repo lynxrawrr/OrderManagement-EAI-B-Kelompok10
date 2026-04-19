@@ -1,9 +1,6 @@
 # Struktur Project
 
 Berikut struktur project berdasarkan folder dan file yang ada saat ini.
-
-Catatan: file `.md` tidak dimasukkan ke dalam struktur agar dokumentasi tetap ringkas.
-
 ```text
 .
 |-- .vscode
