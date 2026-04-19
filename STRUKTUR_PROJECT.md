@@ -1,6 +1,8 @@
 # Struktur Project
 
-Berikut struktur project berdasarkan folder dan file yang ada saat ini.
+Project ini disusun menggunakan pendekatan microservices dengan tiga service utama, yaitu `order-management`, `inventory-service`, dan `shipping-service`. Masing-masing service memiliki tanggung jawab yang berbeda, sehingga alur pemesanan, pengelolaan stok, dan proses pengiriman dapat dipisahkan dengan lebih jelas. Struktur ini membantu pengembangan aplikasi menjadi lebih modular, mudah dipahami, dan lebih sederhana saat dilakukan maintenance maupun pengujian.
+
+Secara umum, setiap service memiliki pola folder yang serupa, seperti `config`, `controller`, `dto`, `entity`, `repository`, `service`, serta `resources` dan `test`. Pola ini menunjukkan bahwa setiap service dibangun dengan arsitektur Spring Boot yang terstruktur, sehingga pembagian logika bisnis, akses data, konfigurasi, dan endpoint API menjadi lebih rapi. Pada dokumentasi struktur berikut, file `.md` tidak dimasukkan agar tampilan tetap fokus pada folder dan file inti project.
 ```text
 .
 |-- .vscode
