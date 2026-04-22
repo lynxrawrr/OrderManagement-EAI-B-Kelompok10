@@ -9,19 +9,28 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Component
 public class OrderEventListener {
+    private final Set<Long> closedOrders = ConcurrentHashMap.newKeySet();
 
     @Autowired
     private ShipmentService shipmentService;
 
-    // Mendengarkan Exchange yang sama dari OrderService, tapi pakai Queue khusus Shipping
+    // Shipment baru dibuat hanya setelah Inventory berhasil reserve stok
     @RabbitListener(bindings = @QueueBinding(
         value = @Queue(value = "order_shipping_queue", durable = "true"),
         exchange = @Exchange(value = "order_exchange", type = "topic"),
-        key = "order_routing_key"
+        key = "stock_reserved_key"
     ))
     public void consumeOrderEvent(OrderEvent event) {
+        if (closedOrders.contains(event.getOrderId())) {
+            System.out.println("Melewati create shipment karena order sudah ditutup: " + event.getOrderId());
+            return;
+        }
+
         System.out.println("Menerima pesanan baru! Memproses jadwal pengiriman untuk Order ID: " + event.getOrderId());
         try {
             // Panggil fungsi create shipment dengan data lengkap
@@ -39,6 +48,7 @@ public class OrderEventListener {
         key = "order_cancel_key"
     ))
     public void consumeCancelEvent(OrderEvent event) {
+        closedOrders.add(event.getOrderId());
         System.out.println("Menerima pembatalan pesanan untuk Order ID: " + event.getOrderId());
         try {
             shipmentService.cancelShipment(event.getOrderId());

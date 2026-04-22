@@ -2,13 +2,16 @@ package com.example.ordermanagement.service;
 
 import com.example.ordermanagement.config.RabbitMQConfig;
 import com.example.ordermanagement.dto.OrderEvent;
-import com.example.ordermanagement.entity.Product;
+import com.example.ordermanagement.dto.ProductRequest;
 import com.example.ordermanagement.entity.Category;
+import com.example.ordermanagement.entity.Product;
 import com.example.ordermanagement.repository.CategoryRepository;
+import com.example.ordermanagement.repository.OrderItemRepository;
 import com.example.ordermanagement.repository.ProductRepository;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,7 +23,10 @@ public class ProductService {
     private ProductRepository productRepository;
 
     @Autowired
-    private CategoryRepository categoryRepository; 
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private OrderItemRepository orderItemRepository;
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
@@ -49,31 +55,54 @@ public class ProductService {
         return saved;
     }
 
-public Product updateProduct(Long id, Product request) {
-    return productRepository.findById(id)
-            .map(product -> {
-                // Update data dasar produk
-                product.setName(request.getName());
-                product.setPrice(request.getPrice());
-                product.setStock(request.getStock());
-                
-                // Cari dan pasangkan kategori jika ada perubahan
-                if (request.getCategory() != null && request.getCategory().getId() != null) {
-                    Category category = categoryRepository.findById(request.getCategory().getId())
-                            .orElseThrow(() -> new RuntimeException("Category tidak ditemukan"));
-                    product.setCategory(category);
-                }
-                
-                return productRepository.save(product);
-            })
-            .orElse(null);
-}
+    @Transactional
+    public Product updateProduct(Long id, ProductRequest request) {
+        return productRepository.findById(id)
+                .map(product -> {
+                    product.setName(request.getName());
+                    product.setPrice(request.getPrice());
+                    product.setStock(request.getStock());
 
+                    if (request.getCategoryId() != null) {
+                        Category category = categoryRepository.findById(request.getCategoryId())
+                                .orElseThrow(() -> new IllegalArgumentException("Category tidak ditemukan"));
+                        product.setCategory(category);
+                    }
+
+                    Product updated = productRepository.save(product);
+
+                    // Sinkronkan total stok terbaru ke Inventory Service.
+                    OrderEvent syncEvent = new OrderEvent(0L, updated.getId(), updated.getStock());
+                    rabbitTemplate.convertAndSend(
+                            RabbitMQConfig.EXCHANGE,
+                            RabbitMQConfig.PRODUCT_SYNC_ROUTING_KEY,
+                            syncEvent);
+                    System.out.println("Pesan Sinkronisasi Update Produk dikirim untuk ID: " + updated.getId());
+
+                    return updated;
+                })
+                .orElse(null);
+    }
+
+    @Transactional
     public boolean deleteProduct(Long id) {
-        if (productRepository.existsById(id)) {
-            productRepository.deleteById(id);
-            return true;
+        if (!productRepository.existsById(id)) {
+            return false;
         }
-        return false;
+
+        if (orderItemRepository.existsByProductId(id)) {
+            throw new IllegalStateException("Product sudah dipakai pada order dan tidak boleh dihapus");
+        }
+
+        productRepository.deleteById(id);
+
+        OrderEvent deleteEvent = new OrderEvent(0L, id, 0);
+        rabbitTemplate.convertAndSend(
+                RabbitMQConfig.EXCHANGE,
+                RabbitMQConfig.PRODUCT_DELETE_ROUTING_KEY,
+                deleteEvent);
+        System.out.println("Pesan Penghapusan Produk dikirim untuk ID: " + id);
+
+        return true;
     }
 }

@@ -32,6 +32,37 @@ public class InventoryService {
         System.out.println("Inventory awal dibuat untuk Produk ID: " + productId);
     }
 
+    @Transactional
+    public void syncProductStock(Long productId, Integer totalStock) {
+        Inventory inv = inventoryRepository.findById(productId).orElse(null);
+
+        if (inv == null) {
+            createInventory(productId, totalStock);
+            return;
+        }
+
+        int reservedStock = inv.getReservedStock();
+        if (totalStock < reservedStock) {
+            throw new IllegalStateException(
+                    "Stok total baru lebih kecil dari reserved stock untuk Produk ID: " + productId);
+        }
+
+        inv.setAvailableStock(totalStock - reservedStock);
+        inventoryRepository.save(inv);
+        System.out.println("Inventory disinkronkan untuk Produk ID: " + productId);
+    }
+
+    @Transactional
+    public void deleteInventory(Long productId) {
+        if (!inventoryRepository.existsById(productId)) {
+            System.out.println("Inventory tidak ditemukan untuk Produk ID: " + productId + ", tidak ada yang dihapus.");
+            return;
+        }
+
+        inventoryRepository.deleteById(productId);
+        System.out.println("Inventory dihapus untuk Produk ID: " + productId);
+    }
+
     // Metode untuk mengunci stok sementara saat pesanan dibuat (Reserved)
     @Transactional
     public void reserveStock(Long productId, Integer quantity) {
@@ -70,8 +101,18 @@ public class InventoryService {
     @Transactional
     public void releaseStock(Long productId, Integer quantity) {
         Inventory inv = getStock(productId);
-        inv.setReservedStock(inv.getReservedStock() - quantity); // Kurangi cadangan
-        inv.setAvailableStock(inv.getAvailableStock() + quantity); // Kembalikan ke tersedia
+        int releasable = Math.min(quantity, inv.getReservedStock());
+        if (releasable <= 0) {
+            System.out.println("Tidak ada reserved stock yang bisa di-release untuk Produk ID: " + productId);
+            return;
+        }
+
+        if (releasable < quantity) {
+            System.out.println("Peringatan: Release stok dibatasi menjadi " + releasable + " untuk Produk ID: " + productId);
+        }
+
+        inv.setReservedStock(inv.getReservedStock() - releasable); // Kurangi cadangan
+        inv.setAvailableStock(inv.getAvailableStock() + releasable); // Kembalikan ke tersedia
         inventoryRepository.save(inv);
     }
 }

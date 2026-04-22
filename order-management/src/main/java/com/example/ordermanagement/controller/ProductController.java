@@ -52,12 +52,12 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product request) {
-        Product updated = productService.updateProduct(id, request); 
+    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody @Valid ProductRequest request) {
+        Product updated = productService.updateProduct(id, request);
         if (updated == null) {
-            return ResponseEntity.notFound().build(); 
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(updated); 
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")

@@ -1,140 +1,187 @@
-# 🛒 Order Management System API (EAI 101)
+# Order Management Service
 
-Sistem Backend sederhana berbasis Java Spring Boot untuk mengelola alur transaksi e-commerce, mulai dari manajemen data master (Produk, Kategori, Pelanggan) hingga integrasi transaksi pesanan (Order) dengan pengurangan stok otomatis.
+Service ini berjalan di port `8080` dan menjadi pusat data master serta koordinasi flow order pada sistem `OrderManagement`.
 
----
+Tanggung jawab utamanya:
 
-## 🚀 Fitur Utama
-- **🛠️ CRUD Master Data**: Manajemen lengkap untuk Produk, Kategori, dan Pelanggan.
-- **🔗 Relasi Database**: Implementasi relasi Many-to-One antara Produk-Kategori dan Order-Pelanggan.
-- **📝 Transaksi Pesanan**: Pembuatan Order dengan detail banyak item sekaligus.
-- **📉 Manajemen Stok**: Pengurangan stok otomatis saat pesanan dibuat (dengan fitur *rollback* jika stok tidak cukup).
-- **✅ Validasi Input**: Validasi data menggunakan DTO dan Jakarta Validation.
-- **⚠️ Global Error Handling**: Format respon error JSON yang konsisten.
+- menyimpan data `product`, `category`, `customer`, `order`, dan `order_item`
+- membuat order baru
+- membatalkan order
+- menerima event reserve gagal dari `inventory-service`
+- menerima event `SHIPPED` dari `shipping-service`
+- mengirim event RabbitMQ utama ke `inventory-service` dan event rollback ke `inventory-service` serta `shipping-service`
 
----
+## Prasyarat
 
-## 🛠️ Prasyarat
-- **Java 11** atau lebih tinggi (Direkomendasikan Java 17+).
-- **Maven** (sudah termasuk dalam wrapper `./mvnw`).
-- **MySQL 8.0** (Direkomendasikan menggunakan versi 8.0 untuk kompatibilitas Workbench).
+- Java 11+
+- MySQL
+- RabbitMQ
 
----
+## Menjalankan Service
 
-## ⚙️ Instalasi & Konfigurasi
+1. Buat database:
 
-### 1. Persiapan Database
-Login ke terminal MySQL Anda dan jalankan perintah berikut:
 ```sql
 CREATE DATABASE order_management_db;
 ```
 
-### 2. Konfigurasi Aplikasi
-Buka file `src/main/resources/application.properties` dan sesuaikan kredensial MySQL Anda:
+2. Sesuaikan `src/main/resources/application.properties`.
+3. Jalankan:
 
-```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/order_management_db?useSSL=false&serverTimezone=UTC
-spring.datasource.username=root
-spring.datasource.password=ISI_PASSWORD_MYSQL_ANDA
-spring.jpa.hibernate.ddl-auto=update
-spring.jpa.show-sql=true
-```
-
-### 🏃 Cara Menjalankan
-Buka terminal di root folder project dan jalankan perintah:
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
-Aplikasi akan berjalan di `http://localhost:8080`.
 
----
+Service akan aktif di `http://localhost:8080`.
 
-## 📖 Dokumentasi API (Demo)
+## Ringkasan Endpoint
 
-### 1. Product API
+### Product API
+
 | Method | Endpoint | Deskripsi |
-| :--- | :--- | :--- |
-| **GET** | `/api/products` | Mendapatkan semua produk |
-| **GET** | `/api/products/{id}` | Mendapatkan detail produk |
-| **POST** | `/api/products` | Menambah produk baru (Validation Active) |
-| **PUT** | `/api/products/{id}` | Update data produk |
-| **DELETE** | `/api/products/{id}` | Menghapus produk |
+| --- | --- | --- |
+| `GET` | `/api/products` | Ambil semua produk |
+| `GET` | `/api/products/{id}` | Ambil detail produk |
+| `POST` | `/api/products` | Buat produk baru dan sync stok awal ke inventory |
+| `PUT` | `/api/products/{id}` | Update produk dan sync total stok ke inventory |
+| `DELETE` | `/api/products/{id}` | Hapus produk dan sync hapus inventory |
 
-**Contoh Body POST Product:**
+Contoh body `POST` atau `PUT /api/products/{id}`:
+
 ```json
 {
-    "name": "Laptop Pro",
-    "price": 15000000.0,
-    "stock": 10,
-    "category": {
-        "id": 1
-    }
+  "name": "Laptop Pro",
+  "price": 15000000.0,
+  "stock": 10,
+  "categoryId": 1
 }
 ```
 
-### 2. Category API
-| Method | Endpoint | Deskripsi |
-| :--- | :--- | :--- |
-| **GET** | `/api/categories` | Mendapatkan semua kategori |
-| **GET** | `/api/categories/{id}` | Mendapatkan detail kategori |
-| **POST** | `/api/categories` | Menambah kategori baru |
-| **PUT** | `/api/categories/{id}` | Mengubah data kategori |
-| **DELETE** | `/api/categories/{id}` | Menghapus kategori |
+Catatan:
 
-### 3. Customer API
-| Method | Endpoint | Deskripsi |
-| :--- | :--- | :--- |
-| **GET** | `/api/customers` | Mendapatkan semua pelanggan |
-| **GET** | `/api/customers/{id}` | Mendapatkan detail pelanggan |
-| **POST** | `/api/customers` | Menambah pelanggan baru (Email Validation) |
-| **PUT** | `/api/customers` | Mengubah data pelanggan (Email Validation Active) |
-| **DELETE** | `/api/customers/{id}` | Menghapus pelanggan |
+- `POST /api/products` dan `PUT /api/products/{id}` mengirim event `product_sync_key`.
+- Sinkronisasi ke inventory memperlakukan `stock` sebagai total stok produk. `inventory-service` akan menjaga `reservedStock` yang sudah ada.
+- `DELETE /api/products/{id}` akan ditolak jika product sudah dipakai pada order, lalu mengirim event `product_delete_key` agar inventory ikut dihapus.
 
-**Contoh Body PUT/POST Customer:**
+### Category API
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| `GET` | `/api/categories` | Ambil semua kategori |
+| `GET` | `/api/categories/{id}` | Ambil detail kategori |
+| `POST` | `/api/categories` | Buat kategori baru |
+| `PUT` | `/api/categories/{id}` | Update kategori |
+| `DELETE` | `/api/categories/{id}` | Hapus kategori |
+
+### Customer API
+
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| `GET` | `/api/customers` | Ambil semua customer |
+| `GET` | `/api/customers/{id}` | Ambil detail customer |
+| `POST` | `/api/customers` | Buat customer baru |
+| `PUT` | `/api/customers/{id}` | Update customer |
+| `DELETE` | `/api/customers/{id}` | Hapus customer |
+
+Contoh body `POST` atau `PUT /api/customers/{id}`:
+
 ```json
 {
-    "name": "Bram",
-    "email": "bram@example.com",
-    "address": "Jl. Soekarno Hatta No. 10, Malang"
+  "name": "Bram",
+  "email": "bram@example.com",
+  "address": "Jl. Soekarno Hatta No. 10, Malang"
 }
 ```
 
-### 4. Order API (Transaksi)
-| Method | Endpoint | Deskripsi |
-| :--- | :--- | :--- |
-| **POST** | `/api/orders?customerId=1` | Membuat pesanan baru (Mengurangi Stok) |
-| **GET** | `/api/orders` | Melihat semua riwayat transaksi |
-| **GET** | `/api/orders/{id}` | Mendapatkan pesanan |
-| **PUT** | `/api/orders/{id}/status` | Update status (PENDING, SHIPPED, dll) |
-| **DELETE** | `/api/orders/{id}` | Menghapus pesanan |
+### Order API
 
-**Contoh Body POST Order:**
+| Method | Endpoint | Deskripsi |
+| --- | --- | --- |
+| `POST` | `/api/orders?customerId={id}` | Buat order baru dan publish event awal ke inventory |
+| `GET` | `/api/orders` | Ambil semua order |
+| `GET` | `/api/orders/{id}` | Ambil detail order |
+| `PUT` | `/api/orders/{id}/status?status={STATUS}` | Update status manual untuk status non-final |
+| `POST` | `/api/orders/{id}/cancel` | Batalkan order dan publish rollback event |
+
+Contoh body `POST /api/orders?customerId=1`:
+
 ```json
 [
-  {"productId": 1, "quantity": 2},
-  {"productId": 2, "quantity": 1}
+  { "productId": 1, "quantity": 2 },
+  { "productId": 2, "quantity": 1 }
 ]
 ```
 
----
+Catatan penting:
 
-## ⚠️ Penanganan Masalah (Troubleshooting)
+- `PUT /api/orders/{id}/status` sekarang hanya aman untuk status non-final seperti `PROCESSING`.
+- Status `CANCELLED` harus lewat `POST /api/orders/{id}/cancel`.
+- Status `SHIPPED` hanya boleh berasal dari event `order_shipped_key` yang dikirim oleh `shipping-service`.
+- Status `FAILED` hanya boleh berasal dari event `order_reserve_failed_key` yang dikirim oleh `inventory-service`.
+- `POST /api/orders/{id}/cancel` sudah diberi guard agar order yang sudah `CANCELLED`, `SHIPPED`, atau `FAILED` tidak diproses ulang.
 
-### Infinite JSON Recursion
-Jika Anda menemui error *Document nesting depth exceeds the maximum allowed*, pastikan Anda sudah menambahkan anotasi `@JsonIgnore` pada entitas `OrderItem`:
+## RabbitMQ yang Dipakai oleh Service Ini
 
-```java
-@ManyToOne
-@JoinColumn(name = "order_id", nullable = false)
-@JsonIgnore
-private Order order;
-```
+Producer dari `order-management`:
 
-### Masalah MySQL Versi 9.x
-Jika MySQL Workbench tidak bisa terhubung, disarankan melakukan downgrade ke MySQL 8.0 atau menggunakan client alternatif seperti DBeaver atau HeidiSQL.
+- `product_sync_key`
+- `product_delete_key`
+- `order_routing_key`
+- `order_cancel_key`
 
----
+Consumer di `order-management`:
 
-**👨‍💻 Dibuat oleh:** Brahmantio J P  
-**🎓 Mata Kuliah:** Enterprise Application Integration (EAI)  
-**🗓️ Tahun:** 2026
+- `order_reserve_failed_key`
+- `order_shipped_key`
+
+Flow utama:
+
+1. `POST /api/products` atau `PUT /api/products/{id}`
+   - publish `product_sync_key`
+   - inventory membuat atau menyinkronkan stok
+2. `DELETE /api/products/{id}`
+   - publish `product_delete_key`
+   - inventory menghapus row inventory terkait
+3. `POST /api/orders?customerId={id}`
+   - publish `order_routing_key`
+   - inventory reserve stok
+   - jika reserve sukses, inventory mengirim `stock_reserved_key` ke shipping
+   - jika reserve gagal, inventory mengirim `order_reserve_failed_key` ke service ini
+4. `POST /api/orders/{id}/cancel`
+   - publish `order_cancel_key`
+   - inventory release stok
+   - shipping cancel shipment
+5. `PUT /api/shipments/{id}/status?status=SHIPPED`
+   - event dari shipping diterima di service ini
+   - status order diubah menjadi `SHIPPED`
+
+## Endpoint Manual vs Flow Utama
+
+Flow utama yang sebaiknya dipakai untuk demo arsitektur:
+
+- `POST /api/products`
+- `PUT /api/products/{id}`
+- `DELETE /api/products/{id}`
+- `POST /api/orders?customerId={id}`
+- `POST /api/orders/{id}/cancel`
+- `PUT /api/shipments/{id}/status?status=SHIPPED`
+
+Endpoint manual yang tetap ada untuk requirement tugas, tetapi bukan jalur bisnis utama:
+
+- `PUT /api/orders/{id}/status?status={STATUS}`
+
+Endpoint ini tidak mengirim event ke service lain, jadi jangan dipakai untuk `CANCELLED` atau `SHIPPED`.
+
+## Catatan Desain
+
+- `POST /api/orders` sekarang lebih aman karena shipping baru membuat shipment setelah inventory benar-benar berhasil reserve stok.
+- Order tetap disimpan lebih dulu, tetapi jika reserve gagal, status akan berubah menjadi `FAILED` dan rollback otomatis dipublish.
+- `DELETE /api/products/{id}` sekarang sudah mengirim event penghapusan ke inventory, tetapi tetap diblok jika product sudah pernah dipakai pada order.
+
+## Dokumentasi Terkait
+
+- `../README.md`
+- `../DAFTAR_ENDPOINT_LENGKAP.md`
+- `../PANDUAN_SIMULASI_DEMO.md`
+- `../ANALISIS_RABBITMQ_DEMO.md`
+- `../AUDIT_ENDPOINT_DESYNC.md`

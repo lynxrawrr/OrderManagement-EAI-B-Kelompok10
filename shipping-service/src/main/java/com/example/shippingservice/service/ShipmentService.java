@@ -38,19 +38,38 @@ public class ShipmentService {
     private RabbitTemplate rabbitTemplate;
 
     public Shipment updateShipmentStatus(Long id, String status) {
+        String normalizedStatus = normalizeStatus(status);
         return shipmentRepository.findById(id).map(shipment -> {
-            shipment.setStatus(status);
+            String currentStatus = normalizeStatus(shipment.getStatus());
+
+            if (currentStatus.equals(normalizedStatus)) {
+                return shipment;
+            }
+
+            if ("CANCELLED".equals(currentStatus)) {
+                throw new IllegalStateException("Shipment yang sudah CANCELLED tidak dapat diubah lagi");
+            }
+
+            if ("SHIPPED".equals(currentStatus)) {
+                throw new IllegalStateException("Shipment yang sudah SHIPPED tidak dapat diubah lagi");
+            }
+
+            if ("CANCELLED".equals(normalizedStatus) && !"PENDING".equals(currentStatus)) {
+                throw new IllegalStateException("Shipment hanya dapat dibatalkan dari status PENDING");
+            }
+
+            shipment.setStatus(normalizedStatus);
             Shipment updated = shipmentRepository.save(shipment);
 
             // Jika kurir mengubah status jadi SHIPPED, kirim pesan ke Inventory agar stok cadangan dibersihkan
-            if ("SHIPPED".equalsIgnoreCase(status)) {
+            if ("SHIPPED".equals(normalizedStatus)) {
                 OrderEvent finalizeEvent = new OrderEvent(updated.getOrderId(), updated.getProductId(), updated.getQuantity());
                 rabbitTemplate.convertAndSend("order_exchange", "order_shipped_key", finalizeEvent);
                 System.out.println("Pesanan DIKIRIM! Mengirim pesan finalize stok ke Inventory...");
             }
 
             return updated;
-        }).orElseThrow(() -> new RuntimeException("Pengiriman tidak ditemukan"));
+        }).orElseThrow(() -> new IllegalArgumentException("Pengiriman tidak ditemukan"));
     }
 
     public List<Shipment> getAllShipments() {
@@ -68,5 +87,12 @@ public class ShipmentService {
                 System.out.println("Shipment ID " + shipment.getId() + " untuk Order ID " + orderId + " telah dibatalkan.");
             }
         }
+    }
+
+    private String normalizeStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new IllegalArgumentException("Status shipment wajib diisi");
+        }
+        return status.trim().toUpperCase();
     }
 }

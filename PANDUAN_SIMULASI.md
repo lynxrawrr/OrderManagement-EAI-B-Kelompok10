@@ -160,12 +160,12 @@ Jika pesanan dibatalkan, stok di inventory harus kembali normal.
 |                            | Release Manual           | POST   | `/api/inventory/release`                                  |
 | **Shipping (8082)**  | List Shipments           | GET    | `/api/shipments`                                          |
 |                            | Check Single             | GET    | `/api/shipments/{id}`                                     |
-|                            | Create Shipment (Manual) | POST   | `/api/shipments?orderId={id}&productId={id}&quantity={n}` |
+|                            | Create Shipment (Manual) | POST   | `/api/shipments`                                          |
 |                            | Update Status            | PUT    | `/api/shipments/{id}/status`                              |
 
 ---
 
-## 6. Prosedur Reset Database (Mulai Dari Nol)
+## 6. Prosedur Reset Database 
 
 Jika Anda ingin mengulang simulasi dari awal dengan database kosong, jalankan perintah SQL berikut di MySQL Anda:
 

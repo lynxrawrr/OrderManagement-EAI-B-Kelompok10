@@ -16,10 +16,11 @@ Sistem ini adalah platform **Order Management** berbasis microservices yang meng
 Relasi antar service dipicu oleh **Event** yang dikirim ke RabbitMQ:
 
 1. **Order -> Inventory (Sync Produk)**: Saat produk baru dibuat, Inventory membuat baris stok awal.
-2. **Order -> Inventory (Reserve)**: Saat pesanan dibuat, stok dipindahkan dari `available` ke `reserved` (dikunci).
-3. **Order -> Shipping (Schedule)**: Saat pesanan dibuat, jadwal pengiriman otomatis dibuat dengan status `PENDING`.
-4. **Order -> Inventory & Shipping (Cancel)**: Jika pesanan dibatalkan, stok `reserved` dikembalikan ke `available` dan status pengiriman diubah menjadi `CANCELLED`.
-5. **Shipping -> Inventory & Order (Ship/Finalize)**: Saat status pengiriman menjadi `SHIPPED`, stok `reserved` dihapus (Finalize) dan status pesanan di Order Service diperbarui menjadi `SHIPPED`.
+2. **Order -> Inventory (Reserve Request)**: Saat pesanan dibuat, Order Service meminta Inventory Service melakukan reserve stok.
+3. **Inventory -> Shipping (Schedule after Reserve)**: Jika reserve berhasil, Inventory Service meneruskan event ke Shipping Service untuk membuat jadwal pengiriman `PENDING`.
+4. **Inventory -> Order (Reserve Failed)**: Jika reserve gagal, Inventory Service memberi tahu Order Service agar status order menjadi `FAILED` dan rollback dipicu.
+5. **Order -> Inventory & Shipping (Cancel)**: Jika pesanan dibatalkan, atau rollback dipicu, stok `reserved` dikembalikan ke `available` dan status pengiriman diubah menjadi `CANCELLED`.
+6. **Shipping -> Inventory & Order (Ship/Finalize)**: Saat status pengiriman menjadi `SHIPPED`, stok `reserved` dihapus (Finalize) dan status pesanan di Order Service diperbarui menjadi `SHIPPED`.
 
 ## 4. Diagram Relasi
 
@@ -37,7 +38,13 @@ sequenceDiagram
     Note over O, S: Alur Pemesanan (Checkout)
     O->>R: OrderPlacedEvent (order_routing_key)
     R-->>I: Reserve Stock (Available -X, Reserved +X)
-    R-->>S: Create Shipment Schedule (Status: PENDING)
+    alt Reserve Berhasil
+        I->>R: StockReservedEvent (stock_reserved_key)
+        R-->>S: Create Shipment Schedule (Status: PENDING)
+    else Reserve Gagal
+        I->>R: OrderReserveFailedEvent (order_reserve_failed_key)
+        R-->>O: Mark Order as FAILED + Trigger Rollback
+    end
 
     Note over O, S: Alur Pengiriman (Update Status)
     S->>S: Update Status to SHIPPED

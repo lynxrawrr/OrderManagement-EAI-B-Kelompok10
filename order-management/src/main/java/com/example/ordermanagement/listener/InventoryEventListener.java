@@ -10,18 +10,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ShippingEventListener {
+public class InventoryEventListener {
 
     @Autowired
     private OrderService orderService;
 
     @RabbitListener(bindings = @QueueBinding(
-        value = @Queue(value = "order_status_queue", durable = "true"),
+        value = @Queue(value = "order_reserve_failed_queue", durable = "true"),
         exchange = @Exchange(value = "order_exchange", type = "topic"),
-        key = "order_shipped_key"
+        key = "order_reserve_failed_key"
     ))
-    public void consumeStatusUpdate(OrderEvent event) {
-        System.out.println("Menerima update status dari Shipping untuk Order ID: " + event.getOrderId());
-        orderService.markAsShippedFromShipping(event.getOrderId());
+    public void consumeReserveFailed(OrderEvent event) {
+        System.out.println("Menerima reserve gagal dari Inventory untuk Order ID: " + event.getOrderId());
+        orderService.markAsFailedFromInventory(event.getOrderId());
     }
 }

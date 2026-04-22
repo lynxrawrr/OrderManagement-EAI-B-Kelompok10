@@ -17,7 +17,12 @@ public class RabbitMQConfig {
     public static final String EXCHANGE = "order_exchange";
     public static final String ROUTING_KEY = "order_routing_key";
     public static final String CANCEL_ROUTING_KEY = "order_cancel_key";
+    public static final String STOCK_RESERVED_ROUTING_KEY = "stock_reserved_key";
+    public static final String RESERVE_FAILED_QUEUE = "order_reserve_failed_queue";
+    public static final String RESERVE_FAILED_ROUTING_KEY = "order_reserve_failed_key";
     public static final String PRODUCT_SYNC_ROUTING_KEY = "product_sync_key";
+    public static final String PRODUCT_DELETE_QUEUE = "product_inventory_delete_queue";
+    public static final String PRODUCT_DELETE_ROUTING_KEY = "product_delete_key";
 
     // Antrean untuk memproses pengurangan stok pesanan
     @Bean
@@ -31,10 +36,22 @@ public class RabbitMQConfig {
         return new Queue(CANCEL_QUEUE);
     }
 
+    // Antrean untuk menerima notifikasi reserve stok gagal dari inventory
+    @Bean
+    public Queue reserveFailedQueue() {
+        return new Queue(RESERVE_FAILED_QUEUE);
+    }
+
     // Antrean untuk sinkronisasi data produk baru ke service inventory
     @Bean
     public Queue productSyncQueue() {
         return new Queue("product_inventory_queue");
+    }
+
+    // Antrean untuk sinkronisasi penghapusan produk ke service inventory
+    @Bean
+    public Queue productDeleteQueue() {
+        return new Queue(PRODUCT_DELETE_QUEUE);
     }
 
     // Exchange (Kantor Pos) tempat pesan dikirim sebelum diarahkan ke antrean yang tepat
@@ -55,10 +72,22 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(cancelQueue).to(exchange).with(CANCEL_ROUTING_KEY);
     }
 
+    // Menghubungkan antrean reserve failed dengan exchange
+    @Bean
+    public Binding reserveFailedBinding(Queue reserveFailedQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(reserveFailedQueue).to(exchange).with(RESERVE_FAILED_ROUTING_KEY);
+    }
+
     // Menghubungkan antrean produk dengan exchange menggunakan routing key khusus sinkronisasi
     @Bean
     public Binding productSyncBinding(Queue productSyncQueue, TopicExchange exchange) {
         return BindingBuilder.bind(productSyncQueue).to(exchange).with(PRODUCT_SYNC_ROUTING_KEY);
+    }
+
+    // Menghubungkan antrean penghapusan produk dengan exchange
+    @Bean
+    public Binding productDeleteBinding(Queue productDeleteQueue, TopicExchange exchange) {
+        return BindingBuilder.bind(productDeleteQueue).to(exchange).with(PRODUCT_DELETE_ROUTING_KEY);
     }
 
     // Mengubah pesan Java menjadi JSON agar mudah dibaca di RabbitMQ
